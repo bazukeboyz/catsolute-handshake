@@ -48,8 +48,13 @@
         .member-avatar { width: 75px; height: 75px; border-radius: 50%; object-fit: cover; border: 2px solid white; box-shadow: 0 3px 8px rgba(0, 0, 0, 0.08); background: #e2e8f0; flex-shrink: 0; }
 
         /* ป้ายตำแหน่งบูท: ไม่ถูกซ่อนโดยปุ่มซ่อนตัวเลข เพราะอยู่ใน profile-section ไม่ใช่ status-section */
-        .booth-badge { background: #6b46c1; color: #fff; font-weight: 800; font-size: 1.1rem; padding: 4px 10px; border-radius: 8px; flex-shrink: 0; min-width: 42px; text-align: center; }
-        .card.compact .booth-badge { font-size: 0.85rem; padding: 3px 6px; min-width: 32px; }
+        .booth-badge { color: #fff; font-weight: 900; font-size: 1.7rem; padding: 6px 14px; border-radius: 10px; flex-shrink: 0; min-width: 56px; text-align: center; }
+        .card.compact .booth-badge { font-size: 1.3rem; padding: 4px 9px; min-width: 44px; }
+
+        /* สีพื้นหลังแยกตามโซน: L = น้ำเงิน, C = เขียว, R =ส้ม/แดง */
+        .booth-badge.group-L { background: #2563eb; }
+        .booth-badge.group-C { background: #16a34a; }
+        .booth-badge.group-R { background: #dc2626; }
         
         .name-box { 
             display: flex; 
@@ -110,6 +115,9 @@
         let lanesDataStore = {};
         let clearTimeouts = {};
 
+        // ลำดับการแสดงผลตามตำแหน่งบูทที่ตายตัว: L1-L4, C1-C4, R1-R5
+        const BOOTH_ORDER = ['L1','L2','L3','L4','C1','C2','C3','C4','R1','R2','R3','R4','R5'];
+
         // ปุ่มเดียวสลับซ่อน/แสดงตัวเลข "รอกี่นาที" และ "คิวสะสมกี่ใบ" ของทุกการ์ดพร้อมกัน เหลือไว้แค่รูป+ชื่อ
         function toggleNumbers() {
             const isHidden = document.body.classList.toggle('numbers-hidden');
@@ -137,7 +145,16 @@
 
             // แสดงเลนที่มีคิวค้างอยู่ หรือเลนที่ถูกระบุตำแหน่งบูทไว้แล้ว (แม้ยังไม่มีคิวก็ต้องโชว์ตำแหน่งบูท)
             let activeLanes = sortedLanes.filter(l => (l.queueStack || 0) > 0 || l.booth);
-            activeLanes.sort((a, b) => (b.queueStack || 0) - (a.queueStack || 0));
+
+            // เรียงตามตำแหน่งบูทตายตัว (L1→L4, C1→C4, R1→R5) ก่อน ส่วนเลนที่ไม่มีบูทให้ไปอยู่ท้ายสุดเรียงตามคิวมาก→น้อย
+            activeLanes.sort((a, b) => {
+                const idxA = BOOTH_ORDER.indexOf(a.booth);
+                const idxB = BOOTH_ORDER.indexOf(b.booth);
+                const rankA = idxA === -1 ? BOOTH_ORDER.length : idxA;
+                const rankB = idxB === -1 ? BOOTH_ORDER.length : idxB;
+                if (rankA !== rankB) return rankA - rankB;
+                return (b.queueStack || 0) - (a.queueStack || 0);
+            });
 
             let top14Lanes = activeLanes.slice(0, 14);
 
@@ -150,6 +167,8 @@
                 const qStack = lane.queueStack || 0;
                 const waitMinutes = Math.ceil((qStack * 30) / 60);
                 const nameFontSize = getNameFontSize(lane.name, isCompact);
+                // จัดกลุ่มสีตามอักษรตัวแรกของบูท: L/C/R
+                const boothGroup = lane.booth ? `group-${lane.booth.charAt(0)}` : '';
 
                 const card = document.createElement('div');
                 card.id = `card-${lane.memberId}`;
@@ -159,7 +178,7 @@
                 // 💡 🌟 นำเอาข้อความ "เลนกำลังเปิดให้บริการ" ออก และใช้โครงสร้างชื่อแบบขยายใหญ่พิเศษ
                 card.innerHTML = `
                     <div class="profile-section">
-                        ${lane.booth ? `<div class="booth-badge">${lane.booth}</div>` : ''}
+                        ${lane.booth ? `<div class="booth-badge ${boothGroup}">${lane.booth}</div>` : ''}
                         <img class="member-avatar" src="img/${lane.memberId}.jpg" alt="${lane.name}" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'75\' height=\'75\' viewBox=\'0 0 75 75\'><rect width=\'75\' height=\'75\' fill=\'%23cbd5e1\'/><text x=\'50%\' y=\'55%\' font-family=\'sans-serif\' font-size=\'32\' fill=\'%2364748b\' text-anchor=\'middle\'>👤</text></svg>'">
                         <div class="name-box">
                             <div class="name" style="font-size:${nameFontSize}rem">${lane.name}</div>
