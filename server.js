@@ -28,7 +28,7 @@ io.on('connection', (socket) => {
     });
     socket.emit('init_all_lanes', initData);
 
-    // 💡 2. สตาฟกดปุ่มเพิ่ม/ลดตั๋ว หรือคีย์ตัวเลข ระบบจะอัปเดตยอดตั๋วและยอดวินาทีให้สดๆ ทันที
+    // 💡 🌟 สตาฟฟ์กดบวกลบตั๋ว หรือคีย์ยอดใหม่ ระบบจะคำนวณบวก/ลดเวลาทบจากยอดเวลาปัจจุบันทันที
     socket.on('update_input_stack', (data) => {
         const { memberId, tickets, name } = data;
         const targetAmount = parseInt(tickets) || 0;
@@ -37,27 +37,38 @@ io.on('connection', (socket) => {
             lanes[memberId] = { name, totalSeconds: 0, isRunning: false, status: 'idle', queueStack: 0, intervalId: null };
         }
 
+        const oldStack = lanes[memberId].queueStack || 0;
         lanes[memberId].queueStack = targetAmount >= 0 ? targetAmount : 0;
         
-        // 💡 1. ระบบทำงานแบบแปรผันตามวินาทีจริง:
-        // ถ้าเวลาลู่นับถอยหลังกำลังวิ่งอยู่ ให้ปรับยอดเวลาถอยหลังเพิ่ม/ลด ตามยอดตั๋วที่สตาฟฟ์แก้ไขแบบ Real-time
+        // 💡 ลอจิกหัวใจสำคัญ: คำนวณส่วนต่างจำนวนบัตรที่เปลี่ยนไป
+        const diffTickets = lanes[memberId].queueStack - oldStack;
+
         if (lanes[memberId].isRunning) {
-            lanes[memberId].totalSeconds = lanes[memberId].queueStack * 30;
+            // 🟢 หากเวลากำลังวิ่งนับถอยหลังอยู่:
+            // ให้เอาส่วนต่างตั๋วคูณ 30 วินาที แล้วจับไปบวกทบ (หรือหักลบ) เข้ากับเวลาปัจจุบันที่เหลืออยู่หน้าจอตรงๆ
+            lanes[memberId].totalSeconds += (diffTickets * 30);
+            
             if (lanes[memberId].totalSeconds <= 0) {
                 clearInterval(lanes[memberId].intervalId);
                 lanes[memberId].isRunning = false;
                 lanes[memberId].status = 'idle';
+                lanes[memberId].queueStack = 0;
+                lanes[memberId].totalSeconds = 0;
             }
+        } else {
+            // ⚪ หากเวลายังไม่เริ่มรัน (สถานะ idle / paused): ให้ตั้งเวลารอไว้ตามสูตรปกติ
+            lanes[memberId].totalSeconds = lanes[memberId].queueStack * 30;
         }
         
         broadcastLaneUpdate(memberId);
     });
 
-    // ปุ่ม START เริ่มนับถอยหลังเวลารวมม้วนเดียวจบ
+    // ปุ่ม START เริ่มนับถอยหลัง
     socket.on('trigger_manual_start', (data) => {
         const { memberId } = data;
         if (!lanes[memberId] || lanes[memberId].queueStack <= 0 || lanes[memberId].isRunning) return;
 
+        // เริ่มต้นจับเวลารวมจากโควตาตั๋วที่มีอยู่ปัจจุบัน
         lanes[memberId].totalSeconds = lanes[memberId].queueStack * 30;
         lanes[memberId].isRunning = true;
         lanes[memberId].status = 'running';
@@ -67,10 +78,10 @@ io.on('connection', (socket) => {
         lanes[memberId].intervalId = setInterval(() => {
             if (lanes[memberId].totalSeconds > 0) {
                 lanes[memberId].totalSeconds--;
-                // อัปเดตสัดส่วนตั๋วที่เหลือคร่าวๆ กลับไปฟีดบนหน้าจอ (30 วินาทีคิดเป็น 1 ใบ)
+                // แปลงวินาทีที่เหลือกลับมาเป็นเม็ดจำนวนตั๋วสะสมบนจอสตาฟฟ์ (30 วินาทีเท่ากับตั๋ว 1 ใบ)
                 lanes[memberId].queueStack = Math.ceil(lanes[memberId].totalSeconds / 30);
             } else {
-                // เวลาหมดแถวเรียบร้อย เคลียร์เลนเป็น 0
+                // เวลาหมดแถว เคลียร์สถานะเลนเป็น 0
                 clearInterval(lanes[memberId].intervalId);
                 lanes[memberId].isRunning = false;
                 lanes[memberId].status = 'timeout';
@@ -94,7 +105,7 @@ io.on('connection', (socket) => {
         }
     });
 
-    // ปุ่ม RESET เคลียร์คิวคนนั้นเป็น 0
+    // ปุ่ม RESET ล้างเลน
     socket.on('reset_queue', (data) => {
         const { memberId } = data;
         if (lanes[memberId]) { 
@@ -106,4 +117,4 @@ io.on('connection', (socket) => {
 });
 
 const PORT = process.env.PORT || 3000;
-http.listen(PORT, () => { console.log(`Grand Countdown Server running on port ${PORT}`); });
+http.listen(PORT, () => { console.log(`Fix Countdown Server running on port ${PORT}`); });
