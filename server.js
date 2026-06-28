@@ -6,80 +6,134 @@ const path = require('path');
 
 app.use(express.static(path.join(__dirname, 'public')));
 
-// เก็บค่าน้ำหนักจำนวนตั๋วสะสมปัจจุบันของทั้ง 26 คน (เริ่มต้นที่ 0 ใบ)
 let lanes = {}; 
+
+function getQueueStackCount(memberId) {
+    if (!lanes[memberId] || !lanes[memberId].queueArray) return 0;
+    return lanes[memberId].queueArray.reduce((a, b) => a + b, 0);
+}
+
+function startLaneCountdown(memberId) {
+    if (!lanes[memberId] || lanes[memberId].isRunning) return;
+    if (!lanes[memberId].queueArray || lanes[memberId].queueArray.length === 0) return;
+    
+    const currentTicket = lanes[memberId].queueArray[0];
+    lanes[memberId].tickets = currentTicket;
+    lanes[memberId].totalSeconds = currentTicket * 30;
+    lanes[memberId].isRunning = true;
+    lanes[memberId].status = 'running';
+
+    if (lanes[memberId].intervalId) clearInterval(lanes[memberId].intervalId);
+
+    lanes[memberId].intervalId = setInterval(() => {
+        if (lanes[memberId].totalSeconds > 0) {
+            lanes[memberId].totalSeconds--;
+        } else {
+            // หมดเวลาคิวก้อนปัจจุบัน -> หักออกจากถาดสะสม
+            lanes[memberId].queueArray.shift();
+            clearInterval(lanes[memberId].intervalId);
+            lanes[memberId].isRunning = false;
+            lanes[memberId].status = 'timeout';
+            lanes[memberId].tickets = 0;
+            lanes[memberId].totalSeconds = 0;
+        }
+        broadcastLaneUpdate(memberId);
+    }, 1000);
+}
 
 function broadcastLaneUpdate(memberId) {
     if (!lanes[memberId]) return;
-    
+    const totalStack = getQueueStackCount(memberId);
+
     io.emit('lane_updated', {
         memberId: memberId,
         data: { 
-            status: lanes[memberId].queueStack > 0 ? 'running' : 'idle', 
-            tickets: lanes[memberId].queueStack > 0 ? 1 : 0, // ค่าสมมติคิวปัจจุบันเพื่อให้โค้ด Dashboard ทำงานได้
-            queueStack: lanes[memberId].queueStack, // ส่งจำนวนตั๋วรวมไปคำนวณนาทีรอคอยโดยตรง
-            totalSeconds: 0 
+            totalSeconds: lanes[memberId].totalSeconds, 
+            status: lanes[memberId].status, 
+            tickets: lanes[memberId].tickets,
+            queueArray: lanes[memberId].queueArray,
+            queueStack: totalStack
         }
     });
 }
 
 io.on('connection', (socket) => {
-    // ส่งข้อมูลคิวทั้งหมดให้หน้าจอเมื่อเชื่อมต่อใหม่
-    socket.emit('init_all_lanes', lanes);
+    let initData = {};
+    Object.keys(lanes).forEach(id => {
+        initData[id] = { ...lanes[id], queueStack: getQueueStackCount(id) };
+    });
+    socket.emit('init_all_lanes', initData);
 
-    // รับสัญญานเพิ่มจำนวนตั๋ว (+1 หรือตามจำนวนที่กรอก)
+    // สตาฟกดปุ่มสเต็ปเปอร์บวกตั๋ว
     socket.on('add_to_stack', (data) => {
         const { memberId, tickets, name } = data;
-        const ticketAmount = parseInt(tickets) || 0;
-
         if (!lanes[memberId]) {
-            lanes[memberId] = { name: name, queueStack: 0, status: 'idle' };
+            lanes[memberId] = { name, totalSeconds: 0, isRunning: false, tickets: 0, status: 'idle', queueArray: [], intervalId: null };
         }
-        
-        lanes[memberId].queueStack += ticketAmount;
-        if (lanes[memberId].queueStack < 0) lanes[memberId].queueStack = 0;
-        
+        lanes[memberId].queueArray.push(parseInt(tickets) || 1);
         broadcastLaneUpdate(memberId);
     });
 
-    // รับสัญญาณหักลบจำนวนตั๋ว (-1 หรือตามจำนวนที่กรอก)
+    // สตาฟกดปุ่มสเต็ปเปอร์ลบตั๋ว
     socket.on('remove_from_stack', (data) => {
         const { memberId, tickets } = data;
-        const ticketAmount = parseInt(tickets) || 0;
+        if (lanes[memberId] && lanes[memberId].queueArray.length > 0) {
+            let lastIdx = lanes[memberId].queueArray.length - 1;
+            if (lastIdx === 0 && lanes[memberId].isRunning) return; // ล็อกไม่ให้ลบก้อนที่เวลากำลังวิ่งอยู่
 
-        if (lanes[memberId]) {
-            lanes[memberId].queueStack -= ticketAmount;
-            if (lanes[memberId].queueStack <= 0) {
-                lanes[memberId].queueStack = 0;
-                lanes[memberId].status = 'idle';
-            }
+            lanes[memberId].queueArray[lastIdx] -= (parseInt(tickets) || 1);
+            if (lanes[memberId].queueArray[lastIdx] <= 0) lanes[memberId].queueArray.pop();
             broadcastLaneUpdate(memberId);
         }
     });
 
-    // สั่งอัปเดตยอดตั๋วโดยตรงจากการพิมพ์ตัวเลขลงในช่อง Input
+    // สตาฟฟ์พิมพ์ตัวเลขลงในช่องตรงๆ
     socket.on('update_input_stack', (data) => {
         const { memberId, tickets, name } = data;
-        const ticketAmount = parseInt(tickets) || 0;
+        const targetAmount = parseInt(tickets) || 0;
 
         if (!lanes[memberId]) {
-            lanes[memberId] = { name: name, queueStack: 0, status: 'idle' };
+            lanes[memberId] = { name, totalSeconds: 0, isRunning: false, tickets: 0, status: 'idle', queueArray: [], intervalId: null };
         }
 
-        lanes[memberId].queueStack = ticketAmount >= 0 ? ticketAmount : 0;
+        // จัดระบบเซฟตี้: ถ้าเวลากำลังวิ่งอยู่ ให้ล็อกก้อนแรกไว้ แล้วไปแก้ตัวเลขตั๋วก้อนถัดไปแทน
+        if (lanes[memberId].isRunning && lanes[memberId].queueArray.length > 0) {
+            const runningTicket = lanes[memberId].queueArray[0];
+            lanes[memberId].queueArray = [runningTicket];
+            if (targetAmount > runningTicket) {
+                lanes[memberId].queueArray.push(targetAmount - runningTicket);
+            }
+        } else {
+            lanes[memberId].queueArray = targetAmount > 0 ? [targetAmount] : [];
+        }
         broadcastLaneUpdate(memberId);
     });
 
-    // ปุ่มล้างคิวของเมมเบอร์คนนั้นๆ ให้กลายเป็น 0 ทันที
+    // ปุ่มแมนนวลรันเวลาจับเวลาประจำตัวศิลปิน
+    socket.on('trigger_manual_start', (data) => {
+        const { memberId } = data;
+        if (lanes[memberId] && lanes[memberId].queueArray.length > 0 && !lanes[memberId].isRunning) {
+            startLaneCountdown(memberId);
+        }
+    });
+
+    // ปุ่มหยุดชั่วคราวประจำตัวศิลปิน
+    socket.on('pause_queue', (data) => {
+        if (lanes[data.memberId] && lanes[data.memberId].isRunning) {
+            clearInterval(lanes[data.memberId].intervalId);
+            lanes[data.memberId].isRunning = false;
+            lanes[data.memberId].status = 'paused';
+            broadcastLaneUpdate(data.memberId);
+        }
+    });
+
+    // ปุ่มล้างคิวของคนนั้นๆ
     socket.on('reset_queue', (data) => {
         const { memberId } = data;
-        if (lanes[memberId]) {
-            lanes[memberId].queueStack = 0;
-            lanes[memberId].status = 'idle';
-            broadcastLaneUpdate(memberId);
-        }
+        if (lanes[memberId]) { clearInterval(lanes[memberId].intervalId); delete lanes[memberId]; }
+        io.emit('lane_reseted', { memberId });
     });
 });
 
 const PORT = process.env.PORT || 3000;
-http.listen(PORT, () => { console.log(`All-in-One Server running on port ${PORT}`); });
+http.listen(PORT, () => { console.log(`Countdown Central Server running on port ${PORT}`); });
