@@ -64,14 +64,16 @@
             line-height: 1.1; 
         }
         
-        .status-section { display: flex; align-items: center; }
+        .status-section { display: flex; align-items: center; gap: 10px; }
 
-        .stack-badge { background: rgba(255, 255, 255, 0.75); border: 1px solid rgba(255, 255, 255, 0.9); border-radius: 14px; padding: 8px 18px; font-size: 1.15rem; font-weight: 700; color: var(--text-main); text-align: center; line-height: 1.4; min-width: 160px; box-shadow: 0 4px 10px rgba(0,0,0,0.02); }
-        .stack-badge .wait-highlight { color: #b83280; font-size: 1.6rem; font-weight: 900; display: block; margin-bottom: 1px; }
-        .stack-badge .total-queue { font-size: 0.85rem; color: #64748b; font-weight: 600; }
-        .card.compact .stack-badge { min-width: 110px; padding: 6px 10px; }
-        .card.compact .stack-badge .wait-highlight { font-size: 1.15rem; }
-        .card.compact .stack-badge .total-queue { font-size: 0.7rem; }
+        /* กล่องข้อมูลแยกเป็นใบย่อย: ตัวเลขใหญ่เด่น ส่วนข้อความหน่วยเล็กพอประมาณ */
+        .info-chip { display: flex; align-items: baseline; gap: 5px; background: rgba(255, 255, 255, 0.75); border: 1px solid rgba(255, 255, 255, 0.9); border-radius: 12px; padding: 8px 14px; white-space: nowrap; box-shadow: 0 4px 10px rgba(0,0,0,0.02); }
+        .info-chip .chip-text { font-size: 0.8rem; color: #64748b; font-weight: 600; }
+        .info-chip .chip-number { font-size: 1.8rem; font-weight: 900; color: #b83280; line-height: 1; }
+
+        .card.compact .info-chip { padding: 5px 10px; gap: 3px; }
+        .card.compact .info-chip .chip-text { font-size: 0.65rem; }
+        .card.compact .info-chip .chip-number { font-size: 1.3rem; }
     </style>
 </head>
 <body>
@@ -98,7 +100,8 @@
             if (len > 9) size = 1.5;
             else if (len > 7) size = 1.8;
             else if (len > 5) size = 2.2;
-            if (compact) size = size * 0.6;
+            // โหมดย่อ (เกิน 10 เลน) ไม่ต้องลดขนาดมากนัก เพราะซ่อนรูปแล้วมีพื้นที่ฝั่งชื่อเหลือเยอะ
+            if (compact) size = size * 0.85;
             return size.toFixed(2);
         }
 
@@ -135,9 +138,15 @@
                         </div>
                     </div>
                     <div class="status-section">
-                        <div class="stack-badge">
-                            <span class="wait-highlight">⏱ รอประมาณ ~ ${waitMinutes} นาที</span>
-                            <span class="total-queue">จำนวนตั๋วสะสม: ${qStack} ใบ</span>
+                        <div class="info-chip">
+                            <span class="chip-text">รอ ~</span>
+                            <span class="chip-number">${waitMinutes}</span>
+                            <span class="chip-text">นาที</span>
+                        </div>
+                        <div class="info-chip">
+                            <span class="chip-text">คิวสะสม</span>
+                            <span class="chip-number">${qStack}</span>
+                            <span class="chip-text">ใบ</span>
                         </div>
                     </div>
                 `;
