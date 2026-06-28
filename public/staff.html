@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Super Staff - Central Controller (26 Members)</title>
+    <script src="/socket.io/socket.io.js"></script>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --text-main: #f8fafc;
+            --primary: #3b82f6;
+            --danger: #ef4444;
+            --border: #334155;
+        }
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            font-family: system-ui, -apple-system, sans-serif;
+            margin: 0;
+            padding: 15px;
+        }
+        h1 { font-size: 1.4rem; text-align: center; color: #38bdf8; margin: 5px 0 15px 0; }
+        
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 12px;
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+        
+        /* การ์ดจัดการแถวคิวของแต่ละคน */
+        .member-row-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 10px 14px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+        }
+        
+        .info-zone {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            min-width: 0;
+            flex: 1;
+        }
+        
+        .avatar-mini {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid #475569;
+            flex-shrink: 0;
+        }
+        
+        .name-label {
+            font-size: 1.1rem;
+            font-weight: 700;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        /* โซนชุดปุ่มและอินพุตคอนโทรลตั๋วคิว */
+        .control-zone {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            flex-shrink: 0;
+        }
+        
+        .btn-ctrl {
+            width: 34px;
+            height: 36px;
+            border: none;
+            border-radius: 6px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .btn-minus { background-color: #ea580c; }
+        .btn-plus { background-color: var(--primary); }
+        
+        .input-tickets {
+            width: 55px;
+            height: 36px;
+            text-align: center;
+            font-size: 1.1rem;
+            font-weight: 700;
+            background: #0f172a;
+            border: 1px solid var(--border);
+            color: #fff;
+            border-radius: 6px;
+        }
+        
+        .btn-clear {
+            background: transparent;
+            border: 1px solid #ef4444;
+            color: #ef4444;
+            font-size: 0.75rem;
+            padding: 2px 6px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-left: 4px;
+        }
+        .btn-clear:hover { background: #ef4444; color: white; }
+    </style>
+</head>
+<body>
+
+    <h1>🎛️ Central Staff Controller (หน้าจอรวม 26 เมมเบอร์)</h1>
+
+    <div class="grid-container" id="staff-grid">
+        <script>
+            // รายชื่อเมมเบอร์ทั้ง 26 คนเรียงตามลำดับอักษรอย่างสมบูรณ์
+            const allMembers = [
+                { id: 'alice', name: 'Alice' }, { id: 'ame', name: 'Ame' }, { id: 'best', name: 'Best' },
+                { id: 'eri', name: 'Eri' }, { id: 'gracenae', name: 'Gracenae' }, { id: 'haru', name: 'Haru' },
+                { id: 'jan', name: 'Jan' }, { id: 'jennie', name: 'Jennie' }, { id: 'kartun', name: 'Kartun' },
+                { id: 'kitty', name: 'Kitty' }, { id: 'kris', name: 'Kris' }, { id: 'kwang', name: 'Kwang' }, 
+                { id: 'lilin', name: 'Lilin' }, { id: 'mickey', name: 'Mickey' }, { id: 'minmin', name: 'Minmin' }, 
+                { id: 'nisa', name: 'Nisa' }, { id: 'nori', name: 'Nori' }, { id: 'oum', name: 'Oum' }, 
+                { id: 'pear', name: 'Pear' }, { id: 'pin', name: 'Pin' }, { id: 'pixels', name: 'Pixels' }, 
+                { id: 'praew', name: 'Praew' }, { id: 'punch', name: 'Punch' }, { id: 'sai', name: 'Sai' }, 
+                { id: 'tonliw', name: 'Tonliw' }, { id: 'xiuzhen', name: 'Xiu Zhen' }
+            ];
+
+            // วาดแถวควบคุมเมมเบอร์ลงกริดอัตโนมัติ
+            allMembers.forEach(m => {
+                document.write(`
+                    <div class="member-row-card">
+                        <div class="info-zone">
+                            <img class="avatar-mini" src="img/${m.id}.jpg" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'40\\' height=\'40\'><rect width=\'40\' height=\'40\' fill=\\'%23475569\\'/><text x=\'50%\\' y=\'60%\\' font-size=\'20\\' text-anchor=\'middle\'>👤</text></svg>'">
+                            <div class="name-label">${m.name}</div>
+                        </div>
+                        <div class="control-zone">
+                            <button class="btn-ctrl btn-minus" onclick="stepTicket('${m.id}', -1)">−</button>
+                            <input type="number" class="input-tickets" id="input-${m.id}" value="0" min="0" onchange="inputChanged('${m.id}', '${m.name}')">
+                            <button class="btn-ctrl btn-plus" onclick="stepTicket('${m.id}', 1, '${m.name}')">+</button>
+                            <button class="btn-clear" onclick="clearRow('${m.id}')">ล้าง</button>
+                        </div>
+                    </div>
+                `);
+            });
+        </script>
+    </div>
+
+    <script>
+        const socket = io();
+
+        // เมื่อกดปุ่มเครื่องหมาย + หรือ - ให้ขยับยอดและส่งข้อมูลหา Server ทันที
+        function stepTicket(memberId, amount, memberName = '') {
+            const input = document.getElementById(`input-${memberId}`);
+            let currentVal = parseInt(input.value) || 0;
+            let newVal = currentVal + amount;
+            if (newVal < 0) newVal = 0;
+            
+            input.value = newVal;
+
+            if (amount > 0) {
+                socket.emit('add_to_stack', { memberId, tickets: 1, name: memberName });
+            } else {
+                socket.emit('remove_from_stack', { memberId, tickets: 1 });
+            }
+        }
+
+        // กรณีที่สตาฟเลือกพิมพ์ตัวเลขลงในช่องอินพุตโดยตรง (ลบเลขเก่าแล้วคีย์เลขใหม่)
+        function inputChanged(memberId, memberName) {
+            const input = document.getElementById(`input-${memberId}`);
+            let newVal = parseInt(input.value) || 0;
+            if (newVal < 0) newVal = 0;
+            input.value = newVal;
+
+            socket.emit('update_input_stack', { memberId, tickets: newVal, name: memberName });
+        }
+
+        // ปุ่มล้างตั๋วสะสมของคนนั้นให้กลายเป็น 0 ใบ
+        function clearRow(memberId) {
+            if(confirm('คุณต้องการรีเซ็ตยอดตั๋วของเมมเบอร์คนนี้ให้เป็น 0 ใช่หรือไม่?')) {
+                document.getElementById(`input-${memberId}`).value = 0;
+                socket.emit('reset_queue', { memberId });
+            }
+        }
+
+        // รับค่าสถานะเริ่มต้นมาเติมใส่ในช่องตัวเลขบนมือถือสตาฟเมื่อเปิดระบบ
+        socket.on('init_all_lanes', (allLanes) => {
+            if (allLanes) {
+                Object.keys(allLanes).forEach(id => {
+                    const input = document.getElementById(`input-${id}`);
+                    if (input) {
+                        input.value = allLanes[id].queueStack || 0;
+                    }
+                });
+            }
+        });
+
+        // ซิงค์ตัวเลขระหว่างสตาฟด้วยกันแบบเรียลไทม์ หากมีสตาฟเครื่องอื่นขยับตัวเลข
+        socket.on('lane_updated', (payload) => {
+            const input = document.getElementById(`input-${payload.memberId}`);
+            if (input && payload.data) {
+                input.value = payload.data.queueStack || 0;
+            }
+        });
+    </script>
+</body>
+</html>
