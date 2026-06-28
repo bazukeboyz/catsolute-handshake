@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Central Staff Controller - Sorted by Groups</title>
+    <title>Central Staff Controller - Grand Countdown</title>
     <script src="/socket.io/socket.io.js"></script>
     <style>
         :root {
@@ -21,7 +21,6 @@
         .band-section { margin-bottom: 25px; background: rgba(255,255,255,0.02); padding: 14px; border-radius: 16px; border: 1px solid var(--border); }
         .band-title { font-size: 1.4rem; font-weight: 900; margin: 0 0 12px 5px; padding-left: 10px; }
         
-        /* 💡 1. แยกสีกลุ่มวงชัดเจน ป้องกันสตาฟสับสนหน้างาน */
         .title-sora { color: #f472b6; border-left: 5px solid #f472b6; }
         .title-yami { color: #fbbf24; border-left: 5px solid #fbbf24; }
         .title-mirai { color: #38bdf8; border-left: 5px solid #38bdf8; }
@@ -34,7 +33,6 @@
         .avatar-mini { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; border: 2px solid #475569; flex-shrink: 0; }
         .name-label { font-size: 1.15rem; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #fff; }
         
-        /* โซนเวลานับถอยหลังประจำตัวการ์ด */
         .timer-badge { font-family: monospace; font-size: 1.4rem; font-weight: bold; color: #38bdf8; background: #0f172a; padding: 2px 8px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.05); }
         
         .bottom-row { display: flex; align-items: center; justify-content: space-between; gap: 6px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 8px; }
@@ -46,23 +44,20 @@
         
         .input-tickets { width: 52px; height: 34px; text-align: center; font-size: 1.1rem; font-weight: 700; background: #0f172a; border: 1px solid var(--border); color: #fff; border-radius: 6px; }
         
-        /* ชุดปุ่มกด START/PAUSE ประจำตัวศิลปิน */
         .btn-action-timer { padding: 0 12px; height: 34px; font-size: 0.85rem; font-weight: bold; border: none; border-radius: 6px; color: white; cursor: pointer; min-width: 85px; }
         .btn-start { background-color: var(--success); }
         .btn-pause { background-color: #eab308; color: #000; }
         
         .btn-clear { background: transparent; border: 1px solid #64748b; color: #94a3b8; font-size: 0.75rem; padding: 2px 6px; border-radius: 4px; cursor: pointer; }
         
-        /* คลาสสถานะไฟขอบการ์ดสตาฟ */
         .member-card.running { border-color: var(--success); background: #14251c; }
-        .member-card.warning { border-color: #eab308; background: #262010; }
         .member-card.timeout { border-color: var(--danger); background: #281416; }
     </style>
 </head>
 <body>
 
     <h1>🎛️ Central Staff Countdown Controller</h1>
-    <div style="text-align:center; font-size:0.85rem; color:#94a3b8; margin-bottom:15px;">(คุมพร้อมกัน 26 คน แยกตามสังกัดวงอย่างเป็นระบบ)</div>
+    <div style="text-align:center; font-size:0.85rem; color:#94a3b8; margin-bottom:15px;">(คุมเวลาแบบรวมยอดก้อนเดียว ไม่ต้องสับเปลี่ยนทุก 30 วินาที)</div>
 
     <div class="band-section">
         <div class="band-title title-sora">Sora! Sora!</div>
@@ -83,7 +78,6 @@
         const socket = io();
         let slotStates = {};
 
-        // ลำดับกลุ่มข้อมูลตามสเปกบรีฟของคุณ
         const soraList = [{id:'ame', name:'Ame'}, {id:'best', name:'Best'}, {id:'jennie', name:'Jennie'}, {id:'kitty', name:'Kitty'}, {id:'lilin', name:'Lilin'}, {id:'minmin', name:'Minmin'}, {id:'oum', name:'Oum'}, {id:'pin', name:'Pin'}];
         const yamiList = [{id:'eri', name:'Eri'}, {id:'haru', name:'Haru'}, {id:'jan', name:'Jan'}, {id:'kwang', name:'Kwang'}, {id:'nori', name:'Nori'}, {id:'praew', name:'Praew'}, {id:'punch', name:'Punch'}, {id:'tonliw', name:'Tonliw'}, {id:'xiuzhen', name:'Xiu Zhen'}];
         const miraiList = [{id:'alice', name:'Alice'}, {id:'gracenae', name:'Gracenae'}, {id:'kartun', name:'Kartun'}, {id:'kris', name:'Kris'}, {id:'mickey', name:'Mickey'}, {id:'nisa', name:'Nisa'}, {id:'pear', name:'Pear'}, {id:'pixels', name:'Pixels'}, {id:'sai', name:'Sai'}];
@@ -91,23 +85,23 @@
         function drawGrid(containerId, list) {
             const container = document.getElementById(containerId);
             container.innerHTML = list.map(m => {
-                slotStates[m.id] = { currentStatus: 'idle', lastStatus: 'idle' };
+                slotStates[m.id] = { currentStatus: 'idle' };
                 return `
                     <div class="member-card" id="card-${m.id}">
                         <div class="top-row">
                             <div class="info-zone">
-                                <img class="avatar-mini" src="img/${m.id}.jpg" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'44\\' height=\\'44\\'><rect width=\\'44\\' height=\\'44\\' fill=\\'%23475569\\'/><text x=\'50%\\' y=\'60%\\' font-size=\'22\\' text-anchor=\'middle\'>👤</text></svg>'">
+                                <img class="avatar-mini" src="img/${m.id}.jpg" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'44\\' height=\\'44\\'><rect width=\'44\\' height=\'44\\' fill=\'%23475569\\'/><text x=\'50%\\' y=\'60%\\' font-size=\'22\\' text-anchor=\'middle\'>👤</text></svg>'">
                                 <div class="name-label">${m.name}</div>
                             </div>
                             <div class="timer-badge" id="clock-${m.id}">00:00</div>
                         </div>
                         <div class="bottom-row">
                             <div class="control-zone">
-                                <button class="btn-ctrl btn-minus" onclick="stepTicket('${m.id}', -1)">−</button>
+                                <button class="btn-ctrl btn-minus" onclick="stepTicket('${m.id}', -1, '${m.name}')">−</button>
                                 <input type="number" class="input-tickets" id="input-${m.id}" value="0" min="0" onchange="inputChanged('${m.id}', '${m.name}')">
                                 <button class="btn-ctrl btn-plus" onclick="stepTicket('${m.id}', 1, '${m.name}')">+</button>
                             </div>
-                            <button class="btn-action a-btn" id="btn-time-${m.id}" onclick="toggleTimer('${m.id}', '${m.name}')">START</button>
+                            <button class="btn-action a-btn" id="btn-time-${m.id}" onclick="toggleTimer('${m.id}')">START</button>
                             <button class="btn-clear" onclick="clearRow('${m.id}')">ล้าง</button>
                         </div>
                     </div>
@@ -115,22 +109,18 @@
             }).join('');
         }
 
-        // เรียกวาดทั้ง 3 กลุ่ม
         drawGrid('grid-sora', soraList);
         drawGrid('grid-yami', yamiList);
         drawGrid('grid-mirai', miraiList);
 
-        function stepTicket(memberId, amount, memberName = '') {
+        // 💡 2. เมื่อกดปุ่มบวกลบ ยอดบัตรจะคำนวณสะสมและยิงข้อมูลไปปรับวินาทีถอยหลังกลางอากาศอัตโนมัติ
+        function stepTicket(memberId, amount, memberName) {
             const input = document.getElementById(`input-${memberId}`);
             let newVal = (parseInt(input.value) || 0) + amount;
             if (newVal < 0) newVal = 0;
             input.value = newVal;
 
-            if (amount > 0) {
-                socket.emit('add_to_stack', { memberId, tickets: 1, name: memberName });
-            } else {
-                socket.emit('remove_from_stack', { memberId, tickets: 1 });
-            }
+            socket.emit('update_input_stack', { memberId, tickets: newVal, name: memberName });
         }
 
         function inputChanged(memberId, memberName) {
@@ -140,20 +130,16 @@
             socket.emit('update_input_stack', { memberId, tickets: newVal, name: memberName });
         }
 
-        // ลอจิกทางลัดปุ่ม START ประจำการ์ดเดี่ยว
-        function toggleTimer(memberId, memberName) {
+        function toggleTimer(memberId) {
             const state = slotStates[memberId].currentStatus;
-            if (state === 'running' || state === 'warning') {
+            if (state === 'running') {
                 socket.emit('pause_queue', { memberId });
             } else {
                 const input = document.getElementById(`input-${memberId}`);
-                // หากหน้าจอขึ้นเป็น 0 ใบ แต่สตาฟฟ์มากดเริ่มเวลา ให้แอบเพิ่มคิวให้ 1 ใบอัตโนมัติแล้วรันเวลาต่อทันที
-                if ((parseInt(input.value) || 0) === 0) {
-                    socket.emit('add_to_stack', { memberId, tickets: 1, name: memberName });
-                    setTimeout(() => { socket.emit('trigger_manual_start', { memberId }); }, 150);
-                } else {
-                    socket.emit('trigger_manual_start', { memberId });
+                if ((parseInt(input.value) || 0) <= 0) {
+                    return alert('กรุณาใส่จำนวนตั๋วคิวก่อนกดปุ่ม START ครับ');
                 }
+                socket.emit('trigger_manual_start', { memberId });
             }
         }
 
@@ -166,27 +152,21 @@
         function updateCardUI(memberId, data) {
             const { totalSeconds, status, queueStack } = data;
             slotStates[memberId].currentStatus = status;
-            slotStates[memberId].lastStatus = status;
 
-            // อัปเดตช่องอินพุตตัวเลขตั๋วรวมสะสม
+            // ตัวเลขยอดตั๋วอัปเดตไหลตามวินาทีที่วิ่งโดยอัตโนมัติ
             document.getElementById(`input-${memberId}`).value = queueStack || 0;
             
-            // อัปเดตตัวเลขเวลานับถอยหลังประจำบล็อก
             const min = String(Math.floor(totalSeconds / 60)).padStart(2, '0');
             const sec = String(totalSeconds % 60).padStart(2, '0');
             document.getElementById(`clock-${memberId}`).textContent = `${min}:${sec}`;
 
-            // ปรับสีขอบกริดและคำอธิบายบนปุ่มกด
             const card = document.getElementById(`card-${memberId}`);
             const btn = document.getElementById(`btn-time-${memberId}`);
             card.className = `member-card ${status}`;
 
-            if (status === 'running' || status === 'warning') {
+            if (status === 'running') {
                 btn.textContent = "PAUSE";
                 btn.className = "btn-action-timer btn-pause";
-            } else if (status === 'timeout') {
-                btn.textContent = "ถัดไป ➔";
-                btn.className = "btn-action-timer btn-start";
             } else {
                 btn.textContent = "START";
                 btn.className = "btn-action-timer btn-start";
@@ -216,7 +196,7 @@
                 const btn = document.getElementById(`btn-time-${id}`);
                 btn.textContent = "START";
                 btn.className = "btn-action-timer btn-start";
-                slotStates[id] = { currentStatus: 'idle', lastStatus: 'idle' };
+                slotStates[id] = { currentStatus: 'idle' };
             }
         });
     </script>
