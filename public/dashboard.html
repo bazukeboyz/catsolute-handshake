@@ -44,6 +44,10 @@
 
         .profile-section { display: flex; align-items: center; gap: 18px; flex: 1; min-width: 0; }
         .member-avatar { width: 75px; height: 75px; border-radius: 50%; object-fit: cover; border: 2px solid white; box-shadow: 0 3px 8px rgba(0, 0, 0, 0.08); background: #e2e8f0; flex-shrink: 0; }
+
+        /* ป้ายตำแหน่งบูท: ไม่ถูกซ่อนโดยปุ่มซ่อนตัวเลข เพราะอยู่ใน profile-section ไม่ใช่ status-section */
+        .booth-badge { background: #6b46c1; color: #fff; font-weight: 800; font-size: 1.1rem; padding: 4px 10px; border-radius: 8px; flex-shrink: 0; min-width: 42px; text-align: center; }
+        .card.compact .booth-badge { font-size: 0.85rem; padding: 3px 6px; min-width: 32px; }
         
         .name-box { 
             display: flex; 
@@ -147,6 +151,7 @@
                 // 💡 🌟 นำเอาข้อความ "เลนกำลังเปิดให้บริการ" ออก และใช้โครงสร้างชื่อแบบขยายใหญ่พิเศษ
                 card.innerHTML = `
                     <div class="profile-section">
+                        ${lane.booth ? `<div class="booth-badge">${lane.booth}</div>` : ''}
                         <img class="member-avatar" src="img/${lane.memberId}.jpg" alt="${lane.name}" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'75\' height=\'75\' viewBox=\'0 0 75 75\'><rect width=\'75\' height=\'75\' fill=\'%23cbd5e1\'/><text x=\'50%\' y=\'55%\' font-family=\'sans-serif\' font-size=\'32\' fill=\'%2364748b\' text-anchor=\'middle\'>👤</text></svg>'">
                         <div class="name-box">
                             <div class="name" style="font-size:${nameFontSize}rem">${lane.name}</div>
@@ -169,10 +174,10 @@
             });
         }
 
-        function processLaneUpdate(memberId, name, totalSeconds, status, tickets, queueStack = 0) {
+        function processLaneUpdate(memberId, name, totalSeconds, status, tickets, queueStack = 0, booth = '') {
             if (clearTimeouts[memberId]) { clearTimeout(clearTimeouts[memberId]); delete clearTimeouts[memberId]; }
 
-            lanesDataStore[memberId] = { name, totalSeconds, status, tickets, queueStack };
+            lanesDataStore[memberId] = { name, totalSeconds, status, tickets, queueStack, booth };
 
             if ((status === 'timeout' || status === 'idle') && queueStack === 0) {
                 clearTimeouts[memberId] = setTimeout(() => {
@@ -189,7 +194,7 @@
             if (allLanes) {
                 Object.keys(allLanes).forEach(id => {
                     const lane = allLanes[id];
-                    lanesDataStore[id] = { name: lane.name, totalSeconds: lane.totalSeconds || 0, status: lane.status || 'idle', tickets: lane.tickets || 0, queueStack: lane.queueStack || 0 };
+                    lanesDataStore[id] = { name: lane.name, totalSeconds: lane.totalSeconds || 0, status: lane.status || 'idle', tickets: lane.tickets || 0, queueStack: lane.queueStack || 0, booth: lane.booth || '' };
                 });
             }
             renderSortedGrid();
@@ -198,7 +203,7 @@
         socket.on('lane_updated', (payload) => {
             if (!payload || !payload.memberId || !payload.data) return;
             const name = lanesDataStore[payload.memberId] ? lanesDataStore[payload.memberId].name : payload.memberId.toUpperCase();
-            processLaneUpdate(payload.memberId, name, payload.data.totalSeconds, payload.data.status, payload.data.tickets, payload.data.queueStack);
+            processLaneUpdate(payload.memberId, name, payload.data.totalSeconds, payload.data.status, payload.data.tickets, payload.data.queueStack, payload.data.booth);
         });
         
         socket.on('lane_reseted', (payload) => { 
