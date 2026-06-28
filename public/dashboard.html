@@ -74,14 +74,21 @@
         .card.compact .info-chip { padding: 5px 10px; gap: 3px; }
         .card.compact .info-chip .chip-text { font-size: 0.65rem; }
         .card.compact .info-chip .chip-number { font-size: 1.3rem; }
+
+        .toggle-numbers-btn { padding: 8px 16px; font-size: 0.85rem; font-weight: 700; color: #4a154b; background: rgba(255, 255, 255, 0.6); border: 1px solid var(--glass-border); border-radius: 20px; cursor: pointer; }
+        .toggle-numbers-btn.active { background: #6b46c1; color: #fff; border-color: #6b46c1; }
+
+        /* โหมดซ่อนตัวเลข: เหลือแค่รูปและชื่อเมมเบอร์บนจอ Dashboard */
+        body.numbers-hidden .status-section { display: none; }
     </style>
 </head>
 <body>
 
     <header class="header-dash">
         <h1>THE UPRISING PROJECT - LIVE MONITOR</h1>
-        <div style="font-size: 0.95rem; font-weight: 600; color: var(--text-sub);">
+        <div style="font-size: 0.95rem; font-weight: 600; color: var(--text-sub); display: flex; align-items: center; gap: 12px;">
             ✨ Handshake & Talk 30 Sec.
+            <button class="toggle-numbers-btn" id="toggle-numbers-btn" onclick="toggleNumbers()">👁️ ซ่อนตัวเลขทั้งหมด</button>
         </div>
     </header>
 
@@ -92,6 +99,14 @@
         const grid = document.getElementById('monitor-grid');
         let lanesDataStore = {};
         let clearTimeouts = {};
+
+        // ปุ่มเดียวสลับซ่อน/แสดงตัวเลข "รอกี่นาที" และ "คิวสะสมกี่ใบ" ของทุกการ์ดพร้อมกัน เหลือไว้แค่รูป+ชื่อ
+        function toggleNumbers() {
+            const isHidden = document.body.classList.toggle('numbers-hidden');
+            const btn = document.getElementById('toggle-numbers-btn');
+            btn.textContent = isHidden ? '👁️ แสดงตัวเลขทั้งหมด' : '👁️ ซ่อนตัวเลขทั้งหมด';
+            btn.classList.toggle('active', isHidden);
+        }
 
         // คำนวณขนาดฟอนต์ชื่อแบบไดนามิก: ชื่อยาวกว่า 5 ตัวอักษรจะถูกย่อขนาดลงเพื่อไม่ให้ล้นกรอบ/ถูกตัด (...)
         function getNameFontSize(name, compact) {
