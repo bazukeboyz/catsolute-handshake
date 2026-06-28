@@ -34,6 +34,9 @@
         .name-label { font-size: 1.15rem; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #fff; }
         
         .timer-badge { font-family: monospace; font-size: 1.4rem; font-weight: bold; color: #38bdf8; background: #0f172a; padding: 2px 8px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.05); }
+
+        .booth-select { flex-shrink: 0; width: 72px; height: 30px; font-size: 0.85rem; font-weight: 700; text-align: center; color: #fff; background: #0f172a; border: 1px solid var(--border); border-radius: 6px; }
+        .booth-select.has-booth { border-color: #38bdf8; color: #38bdf8; }
         
         .bottom-row { display: flex; align-items: center; justify-content: space-between; gap: 6px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 8px; }
         .control-zone { display: flex; align-items: center; gap: 4px; }
@@ -52,21 +55,12 @@
         
         .member-card.running { border-color: var(--success); background: #14251c; }
         .member-card.timeout { border-color: var(--danger); background: #281416; }
-
-        .toggle-numbers-btn { display: block; margin: 0 auto 15px auto; padding: 8px 18px; font-size: 0.9rem; font-weight: bold; color: #fff; background: #334155; border: 1px solid #475569; border-radius: 20px; cursor: pointer; }
-        .toggle-numbers-btn.active { background: #2563eb; border-color: #2563eb; }
-
-        /* โหมดซ่อนตัวเลข: เหลือแค่รูปและชื่อเมมเบอร์ */
-        body.numbers-hidden .timer-badge,
-        body.numbers-hidden .bottom-row { display: none; }
     </style>
 </head>
 <body>
 
     <h1>🎛️ Central Staff Countdown Controller</h1>
     <div style="text-align:center; font-size:0.85rem; color:#94a3b8; margin-bottom:15px;">(คุมเวลาแบบรวมยอดก้อนเดียว ไม่ต้องสับเปลี่ยนทุก 30 วินาที)</div>
-
-    <button class="toggle-numbers-btn" id="toggle-numbers-btn" onclick="toggleNumbers()">👁️ ซ่อนตัวเลขทั้งหมด</button>
 
     <div class="band-section">
         <div class="band-title title-sora">Sora! Sora!</div>
@@ -87,14 +81,6 @@
         const socket = io();
         let slotStates = {};
 
-        // ปุ่มเดียวสลับซ่อน/แสดงตัวเลขเวลาและจำนวนตั๋วของทุกการ์ดพร้อมกัน เหลือไว้แค่รูป+ชื่อ
-        function toggleNumbers() {
-            const isHidden = document.body.classList.toggle('numbers-hidden');
-            const btn = document.getElementById('toggle-numbers-btn');
-            btn.textContent = isHidden ? '👁️ แสดงตัวเลขทั้งหมด' : '👁️ ซ่อนตัวเลขทั้งหมด';
-            btn.classList.toggle('active', isHidden);
-        }
-
         const soraList = [{id:'ame', name:'Ame'}, {id:'best', name:'Best'}, {id:'jennie', name:'Jennie'}, {id:'kitty', name:'Kitty'}, {id:'lilin', name:'Lilin'}, {id:'minmin', name:'Minmin'}, {id:'oum', name:'Oum'}, {id:'pin', name:'Pin'}];
         const yamiList = [{id:'eri', name:'Eri'}, {id:'haru', name:'Haru'}, {id:'jan', name:'Jan'}, {id:'kwang', name:'Kwang'}, {id:'nori', name:'Nori'}, {id:'praew', name:'Praew'}, {id:'punch', name:'Punch'}, {id:'tonliw', name:'Tonliw'}, {id:'xiuzhen', name:'Xiu Zhen'}];
         const miraiList = [{id:'alice', name:'Alice'}, {id:'gracenae', name:'Gracenae'}, {id:'kartun', name:'Kartun'}, {id:'kris', name:'Kris'}, {id:'mickey', name:'Mickey'}, {id:'nisa', name:'Nisa'}, {id:'pear', name:'Pear'}, {id:'pixels', name:'Pixels'}, {id:'sai', name:'Sai'}];
@@ -110,6 +96,27 @@
                                 <img class="avatar-mini" src="img/${m.id}.jpg" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'44\\' height=\\'44\\'><rect width=\'44\\' height=\'44\\' fill=\'%23475569\\'/><text x=\'50%\\' y=\'60%\\' font-size=\'22\\' text-anchor=\'middle\'>👤</text></svg>'">
                                 <div class="name-label">${m.name}</div>
                             </div>
+                            <select class="booth-select" id="booth-${m.id}" onchange="boothChanged('${m.id}', '${m.name}')">
+                                <option value="">บูท?</option>
+                                <optgroup label="L">
+                                    <option value="L1">L1</option>
+                                    <option value="L2">L2</option>
+                                    <option value="L3">L3</option>
+                                    <option value="L4">L4</option>
+                                </optgroup>
+                                <optgroup label="C">
+                                    <option value="C1">C1</option>
+                                    <option value="C2">C2</option>
+                                    <option value="C3">C3</option>
+                                    <option value="C4">C4</option>
+                                </optgroup>
+                                <optgroup label="R">
+                                    <option value="R1">R1</option>
+                                    <option value="R2">R2</option>
+                                    <option value="R3">R3</option>
+                                    <option value="R4">R4</option>
+                                </optgroup>
+                            </select>
                             <div class="timer-badge" id="clock-${m.id}">00:00</div>
                         </div>
                         <div class="bottom-row">
@@ -147,6 +154,13 @@
             socket.emit('update_input_stack', { memberId, tickets: newVal, name: memberName });
         }
 
+        // 📍 เลือกตำแหน่งบูทจาก Dropdown แล้วส่งไปอัปเดตที่ฝั่ง Server ทันที
+        function boothChanged(memberId, memberName) {
+            const select = document.getElementById(`booth-${memberId}`);
+            select.classList.toggle('has-booth', !!select.value);
+            socket.emit('set_booth', { memberId, booth: select.value, name: memberName });
+        }
+
         function toggleTimer(memberId) {
             const state = slotStates[memberId].currentStatus;
             if (state === 'running') {
@@ -167,12 +181,19 @@
         }
 
         function updateCardUI(memberId, data) {
-            const { totalSeconds, status, queueStack } = data;
+            const { totalSeconds, status, queueStack, booth } = data;
             slotStates[memberId].currentStatus = status;
 
             // ตัวเลขยอดตั๋วอัปเดตไหลตามวินาทีที่วิ่งโดยอัตโนมัติ
             document.getElementById(`input-${memberId}`).value = queueStack || 0;
-            
+
+            // ซิงค์ตำแหน่งบูทให้ตรงกันทุกหน้าจอสตาฟฟ์ (เผื่อมีคนอื่นแก้จากเครื่องอื่น)
+            const boothSelect = document.getElementById(`booth-${memberId}`);
+            if (boothSelect && booth !== undefined) {
+                boothSelect.value = booth || '';
+                boothSelect.classList.toggle('has-booth', !!booth);
+            }
+
             const min = String(Math.floor(totalSeconds / 60)).padStart(2, '0');
             const sec = String(totalSeconds % 60).padStart(2, '0');
             document.getElementById(`clock-${memberId}`).textContent = `${min}:${sec}`;
