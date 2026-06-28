@@ -13,10 +13,11 @@ function broadcastLaneUpdate(memberId) {
 
     io.emit('lane_updated', {
         memberId: memberId,
-        data: { 
-            totalSeconds: lanes[memberId].totalSeconds, 
-            status: lanes[memberId].status, 
-            queueStack: lanes[memberId].queueStack
+        data: {
+            totalSeconds: lanes[memberId].totalSeconds,
+            status: lanes[memberId].status,
+            queueStack: lanes[memberId].queueStack,
+            booth: lanes[memberId].booth || ''
         }
     });
 }
@@ -34,7 +35,7 @@ io.on('connection', (socket) => {
         const targetAmount = parseInt(tickets) || 0;
 
         if (!lanes[memberId]) {
-            lanes[memberId] = { name, totalSeconds: 0, isRunning: false, status: 'idle', queueStack: 0, intervalId: null };
+            lanes[memberId] = { name, totalSeconds: 0, isRunning: false, status: 'idle', queueStack: 0, intervalId: null, booth: '' };
         }
 
         const oldStack = lanes[memberId].queueStack || 0;
@@ -94,6 +95,16 @@ io.on('connection', (socket) => {
         broadcastLaneUpdate(memberId);
     });
 
+    // 📍 สตาฟฟ์เลือกตำแหน่งบูทจาก Dropdown (L1-L4 / C1-C4 / R1-R4)
+    socket.on('set_booth', (data) => {
+        const { memberId, booth, name } = data;
+        if (!lanes[memberId]) {
+            lanes[memberId] = { name: name || '', totalSeconds: 0, isRunning: false, status: 'idle', queueStack: 0, intervalId: null, booth: '' };
+        }
+        lanes[memberId].booth = booth || '';
+        broadcastLaneUpdate(memberId);
+    });
+
     // ปุ่ม PAUSE หยุดเวลาชั่วคราว
     socket.on('pause_queue', (data) => {
         const { memberId } = data;
@@ -105,14 +116,19 @@ io.on('connection', (socket) => {
         }
     });
 
-    // ปุ่ม RESET ล้างเลน
+    // ปุ่ม RESET ล้างเลน (คงตำแหน่งบูทไว้ เพราะเป็นข้อมูลสถานที่ ไม่ใช่ข้อมูลคิว)
     socket.on('reset_queue', (data) => {
         const { memberId } = data;
-        if (lanes[memberId]) { 
-            clearInterval(lanes[memberId].intervalId); 
-            delete lanes[memberId]; 
+        let booth = '';
+        if (lanes[memberId]) {
+            clearInterval(lanes[memberId].intervalId);
+            booth = lanes[memberId].booth || '';
+            delete lanes[memberId];
         }
-        io.emit('lane_reseted', { memberId });
+        if (booth) {
+            lanes[memberId] = { name: '', totalSeconds: 0, isRunning: false, status: 'idle', queueStack: 0, intervalId: null, booth };
+        }
+        io.emit('lane_reseted', { memberId, booth });
     });
 });
 
