@@ -52,12 +52,21 @@
         
         .member-card.running { border-color: var(--success); background: #14251c; }
         .member-card.timeout { border-color: var(--danger); background: #281416; }
+
+        .toggle-numbers-btn { display: block; margin: 0 auto 15px auto; padding: 8px 18px; font-size: 0.9rem; font-weight: bold; color: #fff; background: #334155; border: 1px solid #475569; border-radius: 20px; cursor: pointer; }
+        .toggle-numbers-btn.active { background: #2563eb; border-color: #2563eb; }
+
+        /* โหมดซ่อนตัวเลข: เหลือแค่รูปและชื่อเมมเบอร์ */
+        body.numbers-hidden .timer-badge,
+        body.numbers-hidden .bottom-row { display: none; }
     </style>
 </head>
 <body>
 
     <h1>🎛️ Central Staff Countdown Controller</h1>
     <div style="text-align:center; font-size:0.85rem; color:#94a3b8; margin-bottom:15px;">(คุมเวลาแบบรวมยอดก้อนเดียว ไม่ต้องสับเปลี่ยนทุก 30 วินาที)</div>
+
+    <button class="toggle-numbers-btn" id="toggle-numbers-btn" onclick="toggleNumbers()">👁️ ซ่อนตัวเลขทั้งหมด</button>
 
     <div class="band-section">
         <div class="band-title title-sora">Sora! Sora!</div>
@@ -77,6 +86,14 @@
     <script>
         const socket = io();
         let slotStates = {};
+
+        // ปุ่มเดียวสลับซ่อน/แสดงตัวเลขเวลาและจำนวนตั๋วของทุกการ์ดพร้อมกัน เหลือไว้แค่รูป+ชื่อ
+        function toggleNumbers() {
+            const isHidden = document.body.classList.toggle('numbers-hidden');
+            const btn = document.getElementById('toggle-numbers-btn');
+            btn.textContent = isHidden ? '👁️ แสดงตัวเลขทั้งหมด' : '👁️ ซ่อนตัวเลขทั้งหมด';
+            btn.classList.toggle('active', isHidden);
+        }
 
         const soraList = [{id:'ame', name:'Ame'}, {id:'best', name:'Best'}, {id:'jennie', name:'Jennie'}, {id:'kitty', name:'Kitty'}, {id:'lilin', name:'Lilin'}, {id:'minmin', name:'Minmin'}, {id:'oum', name:'Oum'}, {id:'pin', name:'Pin'}];
         const yamiList = [{id:'eri', name:'Eri'}, {id:'haru', name:'Haru'}, {id:'jan', name:'Jan'}, {id:'kwang', name:'Kwang'}, {id:'nori', name:'Nori'}, {id:'praew', name:'Praew'}, {id:'punch', name:'Punch'}, {id:'tonliw', name:'Tonliw'}, {id:'xiuzhen', name:'Xiu Zhen'}];
