@@ -3,169 +3,127 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Super Staff - Central Controller (26 Members)</title>
+    <title>Central Staff Controller - Sorted by Groups</title>
     <script src="/socket.io/socket.io.js"></script>
     <style>
         :root {
-            --bg-color: #0f172a;
-            --card-bg: #1e293b;
+            --bg-color: #0b0f19;
             --text-main: #f8fafc;
             --primary: #3b82f6;
+            --success: #16a34a;
+            --warning: #ea580c;
             --danger: #ef4444;
-            --border: #334155;
+            --border: rgba(255,255,255,0.1);
         }
-        body {
-            background-color: var(--bg-color);
-            color: var(--text-main);
-            font-family: system-ui, -apple-system, sans-serif;
-            margin: 0;
-            padding: 15px;
-        }
-        h1 { font-size: 1.4rem; text-align: center; color: #38bdf8; margin: 5px 0 15px 0; }
+        body { background-color: var(--bg-color); color: var(--text-main); font-family: system-ui, -apple-system, sans-serif; margin: 0; padding: 15px; }
+        h1 { font-size: 1.3rem; text-align: center; color: #38bdf8; margin: 5px 0; }
         
-        .grid-container {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-            gap: 12px;
-            max-width: 1600px;
-            margin: 0 auto;
-        }
+        .band-section { margin-bottom: 25px; background: rgba(255,255,255,0.02); padding: 14px; border-radius: 16px; border: 1px solid var(--border); }
+        .band-title { font-size: 1.4rem; font-weight: 900; margin: 0 0 12px 5px; padding-left: 10px; }
         
-        /* การ์ดจัดการแถวคิวของแต่ละคน */
-        .member-row-card {
-            background: var(--card-bg);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 10px 14px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 10px;
-        }
+        /* 💡 1. แยกสีกลุ่มวงชัดเจน ป้องกันสตาฟสับสนหน้างาน */
+        .title-sora { color: #f472b6; border-left: 5px solid #f472b6; }
+        .title-yami { color: #fbbf24; border-left: 5px solid #fbbf24; }
+        .title-mirai { color: #38bdf8; border-left: 5px solid #38bdf8; }
+
+        .grid-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 12px; }
         
-        .info-zone {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            min-width: 0;
-            flex: 1;
-        }
+        .member-card { background: #1e293b; border: 1px solid var(--border); border-radius: 12px; padding: 10px 14px; display: flex; flex-direction: column; gap: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.15); }
+        .top-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+        .info-zone { display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1; }
+        .avatar-mini { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; border: 2px solid #475569; flex-shrink: 0; }
+        .name-label { font-size: 1.15rem; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #fff; }
         
-        .avatar-mini {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            object-fit: cover;
-            border: 2px solid #475569;
-            flex-shrink: 0;
-        }
+        /* โซนเวลานับถอยหลังประจำตัวการ์ด */
+        .timer-badge { font-family: monospace; font-size: 1.4rem; font-weight: bold; color: #38bdf8; background: #0f172a; padding: 2px 8px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.05); }
         
-        .name-label {
-            font-size: 1.1rem;
-            font-weight: 700;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
+        .bottom-row { display: flex; align-items: center; justify-content: space-between; gap: 6px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 8px; }
+        .control-zone { display: flex; align-items: center; gap: 4px; }
         
-        /* โซนชุดปุ่มและอินพุตคอนโทรลตั๋วคิว */
-        .control-zone {
-            display: flex;
-            align-items: center;
-            gap: 4px;
-            flex-shrink: 0;
-        }
-        
-        .btn-ctrl {
-            width: 34px;
-            height: 36px;
-            border: none;
-            border-radius: 6px;
-            font-size: 1.2rem;
-            font-weight: bold;
-            color: white;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
+        .btn-ctrl { width: 32px; height: 34px; border: none; border-radius: 6px; font-size: 1.1rem; font-weight: bold; color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; }
         .btn-minus { background-color: #ea580c; }
         .btn-plus { background-color: var(--primary); }
         
-        .input-tickets {
-            width: 55px;
-            height: 36px;
-            text-align: center;
-            font-size: 1.1rem;
-            font-weight: 700;
-            background: #0f172a;
-            border: 1px solid var(--border);
-            color: #fff;
-            border-radius: 6px;
-        }
+        .input-tickets { width: 52px; height: 34px; text-align: center; font-size: 1.1rem; font-weight: 700; background: #0f172a; border: 1px solid var(--border); color: #fff; border-radius: 6px; }
         
-        .btn-clear {
-            background: transparent;
-            border: 1px solid #ef4444;
-            color: #ef4444;
-            font-size: 0.75rem;
-            padding: 2px 6px;
-            border-radius: 4px;
-            cursor: pointer;
-            margin-left: 4px;
-        }
-        .btn-clear:hover { background: #ef4444; color: white; }
+        /* ชุดปุ่มกด START/PAUSE ประจำตัวศิลปิน */
+        .btn-action-timer { padding: 0 12px; height: 34px; font-size: 0.85rem; font-weight: bold; border: none; border-radius: 6px; color: white; cursor: pointer; min-width: 85px; }
+        .btn-start { background-color: var(--success); }
+        .btn-pause { background-color: #eab308; color: #000; }
+        
+        .btn-clear { background: transparent; border: 1px solid #64748b; color: #94a3b8; font-size: 0.75rem; padding: 2px 6px; border-radius: 4px; cursor: pointer; }
+        
+        /* คลาสสถานะไฟขอบการ์ดสตาฟ */
+        .member-card.running { border-color: var(--success); background: #14251c; }
+        .member-card.warning { border-color: #eab308; background: #262010; }
+        .member-card.timeout { border-color: var(--danger); background: #281416; }
     </style>
 </head>
 <body>
 
-    <h1>🎛️ Central Staff Controller (หน้าจอรวม 26 เมมเบอร์)</h1>
+    <h1>🎛️ Central Staff Countdown Controller</h1>
+    <div style="text-align:center; font-size:0.85rem; color:#94a3b8; margin-bottom:15px;">(คุมพร้อมกัน 26 คน แยกตามสังกัดวงอย่างเป็นระบบ)</div>
 
-    <div class="grid-container" id="staff-grid">
-        <script>
-            // รายชื่อเมมเบอร์ทั้ง 26 คนเรียงตามลำดับอักษรอย่างสมบูรณ์
-            const allMembers = [
-                { id: 'alice', name: 'Alice' }, { id: 'ame', name: 'Ame' }, { id: 'best', name: 'Best' },
-                { id: 'eri', name: 'Eri' }, { id: 'gracenae', name: 'Gracenae' }, { id: 'haru', name: 'Haru' },
-                { id: 'jan', name: 'Jan' }, { id: 'jennie', name: 'Jennie' }, { id: 'kartun', name: 'Kartun' },
-                { id: 'kitty', name: 'Kitty' }, { id: 'kris', name: 'Kris' }, { id: 'kwang', name: 'Kwang' }, 
-                { id: 'lilin', name: 'Lilin' }, { id: 'mickey', name: 'Mickey' }, { id: 'minmin', name: 'Minmin' }, 
-                { id: 'nisa', name: 'Nisa' }, { id: 'nori', name: 'Nori' }, { id: 'oum', name: 'Oum' }, 
-                { id: 'pear', name: 'Pear' }, { id: 'pin', name: 'Pin' }, { id: 'pixels', name: 'Pixels' }, 
-                { id: 'praew', name: 'Praew' }, { id: 'punch', name: 'Punch' }, { id: 'sai', name: 'Sai' }, 
-                { id: 'tonliw', name: 'Tonliw' }, { id: 'xiuzhen', name: 'Xiu Zhen' }
-            ];
+    <div class="band-section">
+        <div class="band-title title-sora">Sora! Sora!</div>
+        <div class="grid-container" id="grid-sora"></div>
+    </div>
 
-            // วาดแถวควบคุมเมมเบอร์ลงกริดอัตโนมัติ
-            allMembers.forEach(m => {
-                document.write(`
-                    <div class="member-row-card">
-                        <div class="info-zone">
-                            <img class="avatar-mini" src="img/${m.id}.jpg" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'40\\' height=\'40\'><rect width=\'40\' height=\'40\' fill=\\'%23475569\\'/><text x=\'50%\\' y=\'60%\\' font-size=\'20\\' text-anchor=\'middle\'>👤</text></svg>'">
-                            <div class="name-label">${m.name}</div>
-                        </div>
-                        <div class="control-zone">
-                            <button class="btn-ctrl btn-minus" onclick="stepTicket('${m.id}', -1)">−</button>
-                            <input type="number" class="input-tickets" id="input-${m.id}" value="0" min="0" onchange="inputChanged('${m.id}', '${m.name}')">
-                            <button class="btn-ctrl btn-plus" onclick="stepTicket('${m.id}', 1, '${m.name}')">+</button>
-                            <button class="btn-clear" onclick="clearRow('${m.id}')">ล้าง</button>
-                        </div>
-                    </div>
-                `);
-            });
-        </script>
+    <div class="band-section">
+        <div class="band-title title-yami">Yami Yami</div>
+        <div class="grid-container" id="grid-yami"></div>
+    </div>
+
+    <div class="band-section">
+        <div class="band-title title-mirai">Mirai Mirai</div>
+        <div class="grid-container" id="grid-mirai"></div>
     </div>
 
     <script>
         const socket = io();
+        let slotStates = {};
 
-        // เมื่อกดปุ่มเครื่องหมาย + หรือ - ให้ขยับยอดและส่งข้อมูลหา Server ทันที
+        // ลำดับกลุ่มข้อมูลตามสเปกบรีฟของคุณ
+        const soraList = [{id:'ame', name:'Ame'}, {id:'best', name:'Best'}, {id:'jennie', name:'Jennie'}, {id:'kitty', name:'Kitty'}, {id:'lilin', name:'Lilin'}, {id:'minmin', name:'Minmin'}, {id:'oum', name:'Oum'}, {id:'pin', name:'Pin'}];
+        const yamiList = [{id:'eri', name:'Eri'}, {id:'haru', name:'Haru'}, {id:'jan', name:'Jan'}, {id:'kwang', name:'Kwang'}, {id:'nori', name:'Nori'}, {id:'praew', name:'Praew'}, {id:'punch', name:'Punch'}, {id:'tonliw', name:'Tonliw'}, {id:'xiuzhen', name:'Xiu Zhen'}];
+        const miraiList = [{id:'alice', name:'Alice'}, {id:'gracenae', name:'Gracenae'}, {id:'kartun', name:'Kartun'}, {id:'kris', name:'Kris'}, {id:'mickey', name:'Mickey'}, {id:'nisa', name:'Nisa'}, {id:'pear', name:'Pear'}, {id:'pixels', name:'Pixels'}, {id:'sai', name:'Sai'}];
+
+        function drawGrid(containerId, list) {
+            const container = document.getElementById(containerId);
+            container.innerHTML = list.map(m => {
+                slotStates[m.id] = { currentStatus: 'idle', lastStatus: 'idle' };
+                return `
+                    <div class="member-card" id="card-${m.id}">
+                        <div class="top-row">
+                            <div class="info-zone">
+                                <img class="avatar-mini" src="img/${m.id}.jpg" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'44\\' height=\\'44\\'><rect width=\\'44\\' height=\\'44\\' fill=\\'%23475569\\'/><text x=\'50%\\' y=\'60%\\' font-size=\'22\\' text-anchor=\'middle\'>👤</text></svg>'">
+                                <div class="name-label">${m.name}</div>
+                            </div>
+                            <div class="timer-badge" id="clock-${m.id}">00:00</div>
+                        </div>
+                        <div class="bottom-row">
+                            <div class="control-zone">
+                                <button class="btn-ctrl btn-minus" onclick="stepTicket('${m.id}', -1)">−</button>
+                                <input type="number" class="input-tickets" id="input-${m.id}" value="0" min="0" onchange="inputChanged('${m.id}', '${m.name}')">
+                                <button class="btn-ctrl btn-plus" onclick="stepTicket('${m.id}', 1, '${m.name}')">+</button>
+                            </div>
+                            <button class="btn-action a-btn" id="btn-time-${m.id}" onclick="toggleTimer('${m.id}', '${m.name}')">START</button>
+                            <button class="btn-clear" onclick="clearRow('${m.id}')">ล้าง</button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // เรียกวาดทั้ง 3 กลุ่ม
+        drawGrid('grid-sora', soraList);
+        drawGrid('grid-yami', yamiList);
+        drawGrid('grid-mirai', miraiList);
+
         function stepTicket(memberId, amount, memberName = '') {
             const input = document.getElementById(`input-${memberId}`);
-            let currentVal = parseInt(input.value) || 0;
-            let newVal = currentVal + amount;
+            let newVal = (parseInt(input.value) || 0) + amount;
             if (newVal < 0) newVal = 0;
-            
             input.value = newVal;
 
             if (amount > 0) {
@@ -175,41 +133,90 @@
             }
         }
 
-        // กรณีที่สตาฟเลือกพิมพ์ตัวเลขลงในช่องอินพุตโดยตรง (ลบเลขเก่าแล้วคีย์เลขใหม่)
         function inputChanged(memberId, memberName) {
             const input = document.getElementById(`input-${memberId}`);
             let newVal = parseInt(input.value) || 0;
             if (newVal < 0) newVal = 0;
-            input.value = newVal;
-
             socket.emit('update_input_stack', { memberId, tickets: newVal, name: memberName });
         }
 
-        // ปุ่มล้างตั๋วสะสมของคนนั้นให้กลายเป็น 0 ใบ
+        // ลอจิกทางลัดปุ่ม START ประจำการ์ดเดี่ยว
+        function toggleTimer(memberId, memberName) {
+            const state = slotStates[memberId].currentStatus;
+            if (state === 'running' || state === 'warning') {
+                socket.emit('pause_queue', { memberId });
+            } else {
+                const input = document.getElementById(`input-${memberId}`);
+                // หากหน้าจอขึ้นเป็น 0 ใบ แต่สตาฟฟ์มากดเริ่มเวลา ให้แอบเพิ่มคิวให้ 1 ใบอัตโนมัติแล้วรันเวลาต่อทันที
+                if ((parseInt(input.value) || 0) === 0) {
+                    socket.emit('add_to_stack', { memberId, tickets: 1, name: memberName });
+                    setTimeout(() => { socket.emit('trigger_manual_start', { memberId }); }, 150);
+                } else {
+                    socket.emit('trigger_manual_start', { memberId });
+                }
+            }
+        }
+
         function clearRow(memberId) {
-            if(confirm('คุณต้องการรีเซ็ตยอดตั๋วของเมมเบอร์คนนี้ให้เป็น 0 ใช่หรือไม่?')) {
-                document.getElementById(`input-${memberId}`).value = 0;
+            if(confirm('ต้องการเคลียร์ล้างคิวและเวลาของเมมเบอร์คนนี้ใช่หรือไม่?')) {
                 socket.emit('reset_queue', { memberId });
             }
         }
 
-        // รับค่าสถานะเริ่มต้นมาเติมใส่ในช่องตัวเลขบนมือถือสตาฟเมื่อเปิดระบบ
+        function updateCardUI(memberId, data) {
+            const { totalSeconds, status, queueStack } = data;
+            slotStates[memberId].currentStatus = status;
+            slotStates[memberId].lastStatus = status;
+
+            // อัปเดตช่องอินพุตตัวเลขตั๋วรวมสะสม
+            document.getElementById(`input-${memberId}`).value = queueStack || 0;
+            
+            // อัปเดตตัวเลขเวลานับถอยหลังประจำบล็อก
+            const min = String(Math.floor(totalSeconds / 60)).padStart(2, '0');
+            const sec = String(totalSeconds % 60).padStart(2, '0');
+            document.getElementById(`clock-${memberId}`).textContent = `${min}:${sec}`;
+
+            // ปรับสีขอบกริดและคำอธิบายบนปุ่มกด
+            const card = document.getElementById(`card-${memberId}`);
+            const btn = document.getElementById(`btn-time-${memberId}`);
+            card.className = `member-card ${status}`;
+
+            if (status === 'running' || status === 'warning') {
+                btn.textContent = "PAUSE";
+                btn.className = "btn-action-timer btn-pause";
+            } else if (status === 'timeout') {
+                btn.textContent = "ถัดไป ➔";
+                btn.className = "btn-action-timer btn-start";
+            } else {
+                btn.textContent = "START";
+                btn.className = "btn-action-timer btn-start";
+            }
+        }
+
         socket.on('init_all_lanes', (allLanes) => {
             if (allLanes) {
                 Object.keys(allLanes).forEach(id => {
-                    const input = document.getElementById(`input-${id}`);
-                    if (input) {
-                        input.value = allLanes[id].queueStack || 0;
-                    }
+                    if(document.getElementById(`card-${id}`)) updateCardUI(id, allLanes[id]);
                 });
             }
         });
 
-        // ซิงค์ตัวเลขระหว่างสตาฟด้วยกันแบบเรียลไทม์ หากมีสตาฟเครื่องอื่นขยับตัวเลข
         socket.on('lane_updated', (payload) => {
-            const input = document.getElementById(`input-${payload.memberId}`);
-            if (input && payload.data) {
-                input.value = payload.data.queueStack || 0;
+            if (document.getElementById(`card-${payload.memberId}`)) {
+                updateCardUI(payload.memberId, payload.data);
+            }
+        });
+
+        socket.on('lane_reseted', (payload) => {
+            const id = payload.memberId;
+            if (document.getElementById(`card-${id}`)) {
+                document.getElementById(`input-${id}`).value = 0;
+                document.getElementById(`clock-${id}`).textContent = "00:00";
+                document.getElementById(`card-${id}`).className = "member-card idle";
+                const btn = document.getElementById(`btn-time-${id}`);
+                btn.textContent = "START";
+                btn.className = "btn-action-timer btn-start";
+                slotStates[id] = { currentStatus: 'idle', lastStatus: 'idle' };
             }
         });
     </script>
