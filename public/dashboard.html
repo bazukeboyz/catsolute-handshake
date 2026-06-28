@@ -13,6 +13,8 @@
             --text-sub: #4a5568;
             --success-border: #81c784;
             --success-bg: rgba(232, 245, 233, 0.8);
+            --idle-border: #c4b5fd;
+            --idle-bg: rgba(245, 243, 255, 0.7);
         }
 
         * { box-sizing: border-box; }
@@ -84,6 +86,10 @@
 
         /* โหมดซ่อนตัวเลข: เหลือแค่รูปและชื่อเมมเบอร์บนจอ Dashboard */
         body.numbers-hidden .status-section { display: none; }
+
+        /* การ์ดที่โชว์เพราะมีบูทอย่างเดียว (ยังไม่มีคิวค้าง) ใช้สีกลางๆ แทนสีเขียว "กำลังคุยอยู่" */
+        .card.idle-booth { background: var(--idle-bg); border-color: var(--idle-border); }
+        .card.idle-booth .member-avatar { border-color: var(--idle-border); }
     </style>
 </head>
 <body>
@@ -129,7 +135,8 @@
                 return { memberId: id, ...lanesDataStore[id] };
             });
 
-            let activeLanes = sortedLanes.filter(l => (l.queueStack || 0) > 0);
+            // แสดงเลนที่มีคิวค้างอยู่ หรือเลนที่ถูกระบุตำแหน่งบูทไว้แล้ว (แม้ยังไม่มีคิวก็ต้องโชว์ตำแหน่งบูท)
+            let activeLanes = sortedLanes.filter(l => (l.queueStack || 0) > 0 || l.booth);
             activeLanes.sort((a, b) => (b.queueStack || 0) - (a.queueStack || 0));
 
             let top14Lanes = activeLanes.slice(0, 14);
@@ -146,7 +153,8 @@
 
                 const card = document.createElement('div');
                 card.id = `card-${lane.memberId}`;
-                card.className = `card running${isCompact ? ' compact' : ''}`;
+                // ถ้ายังไม่มีคิวค้าง (มาโชว์เพราะมีบูทเฉยๆ) ให้ใช้สไตล์กลางๆ แทนสีเขียว "กำลังคุยอยู่"
+                card.className = `card ${qStack > 0 ? 'running' : 'idle-booth'}${isCompact ? ' compact' : ''}`;
 
                 // 💡 🌟 นำเอาข้อความ "เลนกำลังเปิดให้บริการ" ออก และใช้โครงสร้างชื่อแบบขยายใหญ่พิเศษ
                 card.innerHTML = `
@@ -179,7 +187,8 @@
 
             lanesDataStore[memberId] = { name, totalSeconds, status, tickets, queueStack, booth };
 
-            if ((status === 'timeout' || status === 'idle') && queueStack === 0) {
+            // ถ้ามีตำแหน่งบูทผูกไว้ ไม่ต้องลบการ์ดออกแม้คิวจะหมด เพื่อให้ตำแหน่งบูทโชว์ค้างไว้ตลอด
+            if ((status === 'timeout' || status === 'idle') && queueStack === 0 && !booth) {
                 clearTimeouts[memberId] = setTimeout(() => {
                     delete lanesDataStore[memberId];
                     renderSortedGrid();
