@@ -326,10 +326,16 @@
             processLaneUpdate(payload.memberId, name, payload.data.totalSeconds, payload.data.status, payload.data.tickets, payload.data.queueStack, payload.data.booth);
         });
         
-        socket.on('lane_reseted', (payload) => { 
+        socket.on('lane_reseted', (payload) => {
             if (!payload || !payload.memberId) return;
             if (clearTimeouts[payload.memberId]) clearTimeout(clearTimeouts[payload.memberId]);
-            delete lanesDataStore[payload.memberId]; 
+            if (payload.booth) {
+                // server keeps the booth assignment after reset, so keep it on screen too
+                const prevName = lanesDataStore[payload.memberId] ? lanesDataStore[payload.memberId].name : '';
+                lanesDataStore[payload.memberId] = { name: prevName, totalSeconds: 0, status: 'idle', tickets: 0, queueStack: 0, booth: payload.booth };
+            } else {
+                delete lanesDataStore[payload.memberId];
+            }
             renderSortedGrid();
         });
     </script>
